@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tank & ASTM 54B</title>
+    <title>BAT 01 - Tank & ASTM 54B</title>
     <style>
         *{box-sizing:border-box;margin:0;padding:0;font-family:Arial,sans-serif}
         body{background:#8e44ad;display:flex;justify-content:center;align-items:flex-start;min-height:100vh;padding:10px;overflow-y:auto}
-        .container{background:#8e44ad;width:100%;max-width:480px;padding:5px;padding-bottom:250px}
+        .container{background:#8e44ad;width:100%;max-width:480px;padding:5px;padding-bottom:250px} /* কিবোর্ডের জায়গার জন্য নিচে এক্সট্রা প্যাডিং দেওয়া হলো */
         .main-title,.astm-title{text-align:center;color:#fff;font-size:18px;font-weight:bold;background:#27ae60;padding:8px;border-radius:6px;margin-bottom:8px;border:2px solid #ffd700;box-shadow:0 0 8px rgba(255,215,0,.6)}
         .astm-title{background:#2980b9;font-size:15px;padding:6px;margin-top:12px}
         .grid-section,.tank-grid{background:#7f8c8d;padding:8px 6px;border-radius:6px;margin-bottom:8px;display:grid;gap:8px}
@@ -21,13 +21,15 @@
     </style>
 </head>
 <body>
+
 <div class="container">
-    <div class="main-title" id="ship_title">Ship Name</div>
+    <div class="main-title" id="ship_title">BAT 01</div>
     <div class="tank-grid" id="tankContainer"></div>
     <div class="grid-section">
         <div class="input-group"><span class="floating-label">Total Dip</span><input type="text" id="total_dip" class="output-field" readonly value="0"></div>
         <div class="input-group"><span class="floating-label">Total Liter</span><input type="text" id="total_liter" class="output-field" readonly value="0"></div>
     </div>
+
     <div class="astm-title">ASTM 53B / 54B</div>
     <div class="grid-section">
         <div class="input-group"><span class="floating-label">Temperature</span><input type="number" id="temp" class="input-field" step="any" oninput="calcAll()"></div>
@@ -42,38 +44,43 @@
         <div class="input-group"><span class="floating-label">Barrels</span><input type="text" id="barrels" class="output-field" readonly></div>
     </div>
 </div>
+
 <script>
-    /*_DYNAMIC_DATA_PLACEHOLDER_*/
-    if (typeof d === 'undefined') { var d = {}; }
-    if (typeof showP4 === 'undefined') { var showP4 = false; }
-    
-    let t = showP4 ? ['p1', 's1', 'p2', 's2', 'p3', 's3', 'p4', 's4'] : ['p1', 's1', 'p2', 's2', 'p3', 's3'];
+    let d = {}, t = ['p1', 's1', 'p2', 's2', 'p3', 's3', 'p4', 's4'];
     let isManualVolume = false;
-    const gVal = id => document.getElementById(id), setVal = (id, v) => { let el = gVal(id); if(el) el.value = v; };
-    
+
+    const gVal = id => document.getElementById(id), setVal = (id, v) => gVal(id).value = v;
+
     window.onload = () => {
-        let tc = document.getElementById('tankContainer');
-        if(tc) {
-            tc.innerHTML = t.map(x => 
-                '<div class="input-group"><span class="floating-label">' + x.toUpperCase() + ' Dip</span><input type="text" inputmode="numeric" id="' + x + '_dip" class="input-field" oninput="onDipChange()"></div>' +
-                '<div class="input-group"><span class="floating-label">' + x.toUpperCase() + ' Liter</span><input type="text" id="' + x + '_liter" class="output-field" readonly></div>'
-            ).join('');
-        }
-        let volEl = document.getElementById('volume');
-        if(volEl) {
-            volEl.addEventListener('input', function() {
-                isManualVolume = true;
-                calcAll();
+        tankContainer.innerHTML = t.map(x => `
+            <div class="input-group"><span class="floating-label">${x.toUpperCase()} Dip</span><input type="text" inputmode="numeric" id="${x}_dip" class="input-field" oninput="onDipChange()"></div>
+            <div class="input-group"><span class="floating-label">${x.toUpperCase()} Liter</span><input type="text" id="${x}_liter" class="output-field" readonly></div>
+        `).join('');
+
+        document.getElementById('volume').addEventListener('input', function() {
+            isManualVolume = true;
+            calcAll();
+        });
+
+        document.querySelectorAll('.input-field').forEach(element => {
+            element.addEventListener('focus', function() {
+                setTimeout(() => {
+                    this.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 300);
             });
-        }
-        calcAll();
+        });
+
+        fetch("https://raw.githubusercontent.com/raselmia9/youtube-streamer/refs/heads/main/BAT%2001.txt")
+            .then(r => r.json())
+            .then(res => { d = res; calcAll(); })
+            .catch(err => console.error(err));
     };
 
     const getL = (n, p, m) => {
         if (!n || m <= 0) return 0;
-        let b = Math.floor(m / 10) * 10, e = n[p + '=' + m];
+        let b = Math.floor(m / 10) * 10, e = n[`${p}=${m}`];
         if (e !== undefined) return Math.round(parseFloat(e));
-        let l = parseFloat(n[p + '=' + b]), u = parseFloat(n[p + '=' + (b + 10)]);
+        let l = parseFloat(n[`${p}=${b}`]), u = parseFloat(n[`${p}=${b + 10}`]);
         return isNaN(l) ? 0 : isNaN(u) ? Math.round(l) : Math.round(l + (((m - b) / 10) * (u - l)));
     };
 
@@ -85,48 +92,57 @@
     }
 
     function calcAll() {
-        let titleEl = gVal('ship_title');
-        let s = titleEl ? titleEl.innerText.trim() : "", td = 0, tl = 0;
+        let s = ship_title.innerText.trim(), td = 0, tl = 0;
         t.forEach(x => {
-            let k = x.toUpperCase(), elDip = gVal(x + '_dip');
-            let v = elDip ? (parseFloat(elDip.value) || 0) : 0;
-            let l = getL(d && d[s] && d[s][k] ? d[s][k] : null, k, v);
-            setVal(x + '_liter', l > 0 ? l : '');
+            let k = x.toUpperCase(), v = parseFloat(gVal(`${x}_dip`).value) || 0;
+            let l = getL(d?.[s]?.[k], k, v);
+            setVal(`${x}_liter`, l > 0 ? l : "");
             td += v; tl += l;
         });
         setVal('total_dip', td);
         setVal('total_liter', tl);
+
         if (!isManualVolume) {
-            setVal('volume', tl > 0 ? tl : '');
+            setVal('volume', tl > 0 ? tl : "");
         }
-        let tempEl = gVal('temp'), oDEl = gVal('obsDensity'), volEl = gVal('volume');
-        if(!tempEl || !oDEl || !volEl) return;
-        
-        let temp = parseFloat(tempEl.value),
-            oD = parseFloat(oDEl.value),
-            vol = parseFloat(volEl.value);
+
+        let temp = parseFloat(gVal('temp').value), 
+            oD = parseFloat(gVal('obsDensity').value), 
+            vol = parseFloat(gVal('volume').value);
 
         if (isNaN(temp) || isNaN(oD)) return ['den15','vcf','netVolume','wcf','liter','mt','barrels'].forEach(id => setVal(id, ''));
+
         let dt = temp - 15, rem = oD % 1;
         let obsD = Math.abs(rem - 0.25) < 0.001 ? Math.floor(oD) : Math.abs(rem - 0.75) < 0.001 ? Math.ceil(oD) : Math.round(oD * 2) / 2;
+        
         let alpha_glass = 0.000023, beta_glass = 0.000000002;
         let hydD = obsD * (1 - alpha_glass * dt - beta_glass * dt * dt), d15 = hydD;
+        
         for (let i = 0; i < 25; i++) {
             let alpha = gA(d15);
             let VCF_iter = Math.exp(-alpha * dt * (1 + 0.8 * alpha * dt));
             d15 = hydD / VCF_iter;
         }
+
         let rD15 = Math.round(d15 * 10) / 10;
         let finalAlpha = gA(rD15);
+        
+        // ১. প্রথমে VCF বের করে সেটিকে দশমিকের পর ৪ সংখ্যায় (4 decimal places) ফিক্স করে নেওয়া হলো
         let rawVcf = Math.exp(-finalAlpha * dt * (1 + 0.8 * finalAlpha * dt));
         if (rawVcf <= 0 || isNaN(rawVcf)) return;
-        let vcf = parseFloat(rawVcf.toFixed(4));
+
+        let vcf = parseFloat(rawVcf.toFixed(4)); 
+
         setVal('den15', rD15.toFixed(1));
+        // স্ক্রিনে দেখানোর জন্য ৪ বা ৫ ঘরে রাখা যেতে পারে (যেহেতু আপনি ৪ সংখ্যা চাচ্ছেন, প্রয়োজনে vcf.toFixed(4) ও দিতে পারেন)
         setVal('vcf', vcf.toFixed(4));
+
         if (!isNaN(vol)) {
-            let netV = vol * vcf;
-            let wcf = rD15 - 1.1;
+            // ২. এখন এই ৪ সংখ্যার VCF মানটি দিয়েই পরবর্তী সব কোয়ান্টিটি (নেট ভলিউম, ব্যারেল ইত্যাদি) হিসাব করা হবে
+            let netV = vol * vcf; 
+            let wcf = rD15 - 1.1; 
             let lit = netV * (wcf / 1000);
+            
             setVal('netVolume', netV.toFixed(2));
             setVal('wcf', wcf.toFixed(1));
             setVal('liter', lit.toFixed(2));
@@ -137,6 +153,7 @@
         }
     }
 </script>
+
+
 </body>
-          </html>
-          
+</html>
